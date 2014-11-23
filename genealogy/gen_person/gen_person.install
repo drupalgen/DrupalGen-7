@@ -1,0 +1,20 @@
+<?php
+/**
+ * @file
+ * Gen Person install file
+ */
+
+/**
+ * @defgroup gen_person Genealogy Person
+ * @{
+ */
+
+/**
+ * Implements hook_schema().
+ */
+function gen_person_schema() {
+}  
+
+/**
+ * @} End of defgroup gen_person
+ */

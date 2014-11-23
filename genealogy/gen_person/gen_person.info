@@ -1,0 +1,12 @@
+name = Genealogy Person
+description = "Genealogical Person"
+core = 7.x
+
+package = Genealogy
+
+dependencies[] = entity
+
+files[] = includes/gen_person.entity.inc
+files[] = tests/gen_person.test
+
+
