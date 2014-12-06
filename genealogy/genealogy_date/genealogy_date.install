@@ -1,0 +1,17 @@
+<?php
+/**
+ * Implements hook_field_schema()
+ */
+function genealogy_date_field_schema($field) {
+  $columns = array(
+    'orig_text' => array('type' => 'varchar', 'length' => 60, 'not null' => FALSE),
+    'index_text' => array('type' => 'varchar', 'length' => 60, 'not null' => FALSE),
+    );
+  $indexes = array(
+    'index_text' => array('index_text'),
+  );
+  return array(
+    'columns' => $columns,
+    'indexes' => $indexes,
+  );
+}
