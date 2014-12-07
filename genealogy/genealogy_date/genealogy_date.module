@@ -117,137 +117,175 @@ function genealogy_date_field_validate($entity_type, $entity, $field, $instance,
 function genealogy_date_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
   
   //Setting some constants used to validate the date
-	$months = array( "JAN"=>1, "FEB"=>2, "MAR"=>3, "APR"=>4, "MAY"=>5, "JUN"=>6, "JUL"=>7, "AUG"=>8, "SEP"=>9, "OCT"=>10, "NOV"=>11, "DEC"=>12 );
-	$hebrewmonths = array( "TIS"=>1, "CHE"=>2, "HES"=>2, "KIS"=>3, "TEV"=>4, "TEB"=>4, "SHV"=>5, "SHE"=>5, "ADA"=>6, "VEA"=>7, "NIS"=>8, "IYA"=>9, "SIV"=>10, "TAM"=>11, "AB"=>12, "AV"=>12, "ELU"=>13 );
+
 	//alternatives for "BEF" and "AFT" should be entered in these lists separated by commas
-	$befarray = array( "BEF" );
-	$aftarray = array( "AFT" );
-	$lastday = array( 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31);
-	$preferred_separator = "/";  //this character separates the components in a numeric date, as in "MM/DD/YYYY"
-	$numeric_date_order = 0;  //0 = MM/DD/YYYY; 1 = DD/MM/YYYY
+
+	$befarray = variable_get('genealogy_date_before_acronyms', NULL);
+	$aftarray = variable_get('genealogy_date_after_acronyms', NULL);
+	$lastday = variable_get('genealogy_date_month_lastdays', NULL);
+
+  $reversedate = 0;
   
   foreach($items as $key => $item) {
   
-    if( $item['orig_text'] ) {
+    if ($item['orig_text']) {
       //convert any characters to all uppercase
-      $orig_text = strtoupper(trim( $item['orig_text'] ));
+      $orig_text = strtoupper(trim($item['orig_text']));
       $dateparts = array();
-      $dateparts = explode(" ",$orig_text);
+      $dateparts = explode(" ", $orig_text);
       
-      // looking for a date range...
-      $found = array_search( "TO", $dateparts );
-      if( !$found ) $found = array_search( "AND", $dateparts );
-      $ptr = $found ? $found - 1 : count($dateparts) - 1;
+      $ptr = _genealogy_date_date_range($dateparts);
       
       // breaking date into pieces in preparation for generating the indexed date....
-      $newparts = array();
-      $newparts = explode($preferred_separator, $dateparts[$ptr] );
-      //if number of parts is 3, insert them into array at $ptr, move $ptr up
-      if( count( $newparts ) == 3 ) {
-        $dateparts[$ptr++] = $newparts[0];
-        $dateparts[$ptr++] = $newparts[1];
-        $dateparts[$ptr] = $newparts[2];
-        $reversedate = $numeric_date_order;
-      } else {
-        $reversedate = 0;
-      }
+      $reversedate = _genealogy_date_break_into_components($ptr, $dateparts);
   
-      $slashpos = strpos($dateparts[$ptr],"/");
-      if($slashpos) {
-        $wholeyear1 = strtok($dateparts[$ptr],"/");
-        $wholeyear2 = strtok("/");
-        $len = -1 * strlen($wholeyear2);
-        $len1 = strlen($wholeyear1);
-        $century = substr($wholeyear1,0,$len1+$len);
-        $year1 = substr($wholeyear1,$len1+$len);
-        $year2 = $wholeyear2;
-        if($year1 > $year2) $century++;
-        $tempyear = $century . $year2;
-      }	else {
-        $len = -1 * strlen($dateparts[$ptr]);
-        if($len < -4) $len = -4;
-        $tempyear = trim(substr($dateparts[$ptr],$len));
-        $dash = strpos($tempyear,"-");
-        if($dash !== false)
-          $tempyear = substr($tempyear,$dash+1);
-      }
+      $tempyear = _genealogy_date_get_year_component($ptr, $dateparts);
+      
       
       //Setting the date components.....
-      if( is_numeric( $tempyear ) ) {
+      if (is_numeric($tempyear)) {
         $newyear = $tempyear;
         $ptr--;
         
-        $tempmonth = trim(substr(strtoupper($dateparts[$ptr]),0,3));
-        //if it's in $months, or it's numeric and we're doing dd-mm-yyyy, proceed. If it's numeric and we're doing mm-dd-yyyy, then flip day and month
-        $foundit = 0;
-        if( isset($months[$tempmonth]) ) {
-          $newmonth = $months[$tempmonth];
-          $foundit = 1;
-        } elseif( isset($hebrewmonths[$tempmonth]) ) {
-          $newmonth = $hebrewmonths[$tempmonth];
-          $foundit = 2;
-        } elseif( is_numeric( $tempmonth ) && strlen($tempmonth) <= 2 ) {
-          $newmonth = intval( $tempmonth );
-          $foundit = 1;
-        }
+        $foundit = 0; //julian (1), hebrew(2)  or numeric(0) month flag
         
-        if( $foundit ) {
+        $newmonth = _genealogy_date_get_month_component($dateparts, $ptr, $foundit);
+        
+        if ($foundit) {
           $ptr--;	
           $tempday = $dateparts[$ptr];
         }
-  
-        if($foundit == 1) {
+        
+        if ($foundit == 1) {
+          
           //if we're doing mm/dd/yyyy, we need to switch month and day here
           //it could be numeric, or it could be in $months, if we've switched.
-          if( $reversedate ) {
+          if ($reversedate) {
             $temppart = $newmonth;
             $newmonth = $tempday;
             $tempday = $temppart;
           }
+          
           if (is_numeric( $tempday ) && strlen($tempday) <= 2 ) {
             $newday = sprintf( "%02d", $tempday );
             $ptr--;
-            if($ptr < 0) $ptr = 0;
+            if ($ptr < 0) $ptr = 0;
             $str = substr(strtoupper($dateparts[$ptr]),0,3);
-            if( in_array( $str, $aftarray ) ) {
+            if (in_array( $str, $aftarray )) {
               $newday++;
               if( $newday > $lastday[$newmonth] ) {
                 $newday = 0;
                 if( $newmonth == 12 ) $newyear++;
                 $newmonth = $newmonth < 12 ? $newmonth + 1 : 1;
               }
-            } else if( in_array( $str, $befarray ) ) {
+            }
+            elseif( in_array( $str, $befarray ) ) {
               $newday --;
             }
-          } else {
+          }
+          else {
             $tempday2 = substr(strtoupper($tempday),0,3);
             $newday = 0;
-            if( in_array( $tempday2, $aftarray ) ) {
-              if( $newmonth == 12 ) $newyear++;
+            if (in_array( $tempday2, $aftarray )) {
+              if($newmonth == 12) $newyear++;
               $newmonth = $newmonth < 12 ? $newmonth + 1 : 1;
             }
           }
           
-        } elseif($foundit == 2 ) {
+        }
+        elseif($foundit == 2 ) {
           //Hebrew
-          if(!$tempday) $tempday = 1;
+          if (!$tempday) $tempday = 1;
           $gregoriandate = JDtoGregorian( JewishToJD( $newmonth, $tempday, $newyear ) );
           $newdate = explode("/", $gregoriandate);
           $newyear = $newdate[2];
           $newmonth = $newdate[0];
           $newday= $newdate[1];
-        } else {
+        }
+        else {
           $newmonth = 0;
           $newday = 0;
-          if( in_array( $tempmonth, $aftarray ) ) {
+          if (in_array($tempmonth, $aftarray)) {
             $newyear++;
           }
         }
       }
       $newdate = sprintf("%04d-%02d-%02d", $newyear,$newmonth,$newday);
-    } else {
+    }
+    else {
       $newdate = "0000-00-00";
     }    
     $items[$key]['index_text'] = $newdate; 
   }
+}
+
+function _genealogy_date_date_range($dateparts) {
+  // looking for a date range...
+  $found = array_search("TO", $dateparts);
+  if (!$found) $found = array_search("AND", $dateparts);
+  return $found ? $found - 1 : count($dateparts) - 1;
+}
+
+function _genealogy_date_break_into_components(&$ptr, &$dateparts) {
+  
+  $newparts = array();
+  $newparts = explode(variable_get('genealogy_date_preferred_separator', NULL), $dateparts[$ptr]);
+  //if number of parts is 3, insert them into array at $ptr, move $ptr up
+  if (count($newparts) == 3 ) {
+    $dateparts[$ptr++] = $newparts[0];
+    $dateparts[$ptr++] = $newparts[1];
+    $dateparts[$ptr] = $newparts[2];
+    $reversedate = variable_get('genealogy_date_date_order', NULL);
+  }
+  else {
+    $reversedate = 0;
+  }
+  return $reversedate;
+}
+
+function _genealogy_date_get_year_component($ptr, $dateparts) {
+  $slashpos = strpos($dateparts[$ptr],"/");
+  if ($slashpos) {
+    $wholeyear1 = strtok($dateparts[$ptr],"/");
+    $wholeyear2 = strtok("/");
+    $len = -1 * strlen($wholeyear2);
+    $len1 = strlen($wholeyear1);
+    $century = substr($wholeyear1,0,$len1+$len);
+    $year1 = substr($wholeyear1,$len1+$len);
+    $year2 = $wholeyear2;
+    if ($year1 > $year2) $century++;
+    $tempyear = $century . $year2;
+  }
+  else {
+    $len = -1 * strlen($dateparts[$ptr]);
+    if ($len < -4) $len = -4;
+    $tempyear = trim(substr($dateparts[$ptr],$len));
+    $dash = strpos($tempyear,"-");
+    if ($dash !== false)
+      $tempyear = substr($tempyear,$dash+1);
+  }
+  return $tempyear;
+}
+
+function _genealogy_date_get_month_component(&$dateparts, &$ptr, &$foundit) {
+  $months = variable_get('genealogy_date_julian_months', NULL);  
+	$hebrewmonths = variable_get('genealogy_date_hebrew_months', NULL);
+
+  $tempmonth = trim(substr(strtoupper($dateparts[$ptr]),0,3));
+  //if it's in $months, or it's numeric and we're doing dd-mm-yyyy, proceed. If it's numeric and we're doing mm-dd-yyyy, then flip day and month
+  
+  if (isset($months[$tempmonth])) {
+    $newmonth = $months[$tempmonth];
+    $foundit = 1;
+  }
+  elseif (isset($hebrewmonths[$tempmonth])) {
+    $newmonth = $hebrewmonths[$tempmonth];
+    $foundit = 2;
+  }
+  elseif (is_numeric( $tempmonth ) && strlen($tempmonth) <= 2) {
+    $newmonth = intval( $tempmonth );
+    $foundit = 1;
+  }
+
+  return $newmonth;
 }
