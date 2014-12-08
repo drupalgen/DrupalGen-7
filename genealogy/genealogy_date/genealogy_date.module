@@ -5,9 +5,39 @@
  */
 
 /**
+ * Implements hook_menu().
+ */
+function genealogy_date_menu() {
+  $items = array();
+  $items['admin/config/genealogy/date'] = array(
+    'title' => 'Genealogy Date settings',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('genealogy_date_admin_settings'),
+    'access arguments' => array('administer site configuration'),
+    'type' => MENU_CALLBACK,
+    'file' => 'genealogy_date.admin.inc',
+  );
+  return $items;
+}
+
+/**
+ * Implements hook_menu_alter().
+ */
+/**
+function genealogy_date_menu_alter(&$items) {
+  if(!isset($items['admin/config/genealogy'])) {
+    $items['admin/config/genealogy'] = array(
+      'title' => 'Genealogy Module Settings',
+      'page callback' => array('genealogy_date_overall_admin_settings'),
+      'access arguments' => array('administer site configuration'),
+    );
+  }
+}
+**/
+/**
  * Implements hook_field_info();
  *
- * Provides th description of the field
+ * Provides the description of the field
  */
 function genealogy_date_field_info() {
   return array(
@@ -115,15 +145,7 @@ function genealogy_date_field_validate($entity_type, $entity, $field, $instance,
  * Implements hook_field_presave()
  */
 function genealogy_date_field_presave($entity_type, $entity, $field, $instance, $langcode, &$items) {
-  
-  //Setting some constants used to validate the date
-
-	//alternatives for "BEF" and "AFT" should be entered in these lists separated by commas
-
-	$befarray = variable_get('genealogy_date_before_acronyms', NULL);
 	$aftarray = variable_get('genealogy_date_after_acronyms', NULL);
-	$lastday = variable_get('genealogy_date_month_lastdays', NULL);
-
   $reversedate = 0;
   
   foreach($items as $key => $item) {
@@ -173,13 +195,14 @@ function genealogy_date_field_presave($entity_type, $entity, $field, $instance, 
             $str = substr(strtoupper($dateparts[$ptr]),0,3);
             if (in_array( $str, $aftarray )) {
               $newday++;
+              $lastday = variable_get('genealogy_date_month_lastdays', NULL);
               if( $newday > $lastday[$newmonth] ) {
                 $newday = 0;
                 if( $newmonth == 12 ) $newyear++;
                 $newmonth = $newmonth < 12 ? $newmonth + 1 : 1;
               }
             }
-            elseif( in_array( $str, $befarray ) ) {
+            elseif (in_array($str, variable_get('genealogy_date_before_acronyms', NULL))) {
               $newday --;
             }
           }
@@ -231,7 +254,7 @@ function _genealogy_date_break_into_components(&$ptr, &$dateparts) {
   $newparts = array();
   $newparts = explode(variable_get('genealogy_date_preferred_separator', NULL), $dateparts[$ptr]);
   //if number of parts is 3, insert them into array at $ptr, move $ptr up
-  if (count($newparts) == 3 ) {
+  if (count($newparts) == 3) {
     $dateparts[$ptr++] = $newparts[0];
     $dateparts[$ptr++] = $newparts[1];
     $dateparts[$ptr] = $newparts[2];
@@ -289,3 +312,12 @@ function _genealogy_date_get_month_component(&$dateparts, &$ptr, &$foundit) {
 
   return $newmonth;
 }
+
+/**
+function genealogy_date_overall_admin_settings() {
+  $output = NULL;
+  $link = l(t('Genealogy Date settings'), 'admin/config/genealogy/date');
+  $output .= theme('item_list', array($link));
+  return $output;
+}
+**/
