@@ -1,0 +1,14 @@
+name = Genealogy Installation
+description = "Genealogy Installation program"
+core = 7.x
+
+package = Genealogy
+
+dependencies[] = entity
+dependencies[] = autoassignrole
+dependencies[] = email_registration
+dependencies[] = pathauto
+dependencies[] = user_relationships
+dependencies[] = registration_role
+dependencies[] = uuid
+dependencies[] = genealogy_date
