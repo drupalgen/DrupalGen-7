@@ -13,6 +13,203 @@
  * Implements hook_schema().
  */
 function gen_person_schema() {
+  $schema['gen_person'] = array(
+    'description' => 'Stores Gen Person records',
+    'fields' => array(
+      'pid' => array(
+        'description' => 'unique index for each person',
+        'type' => 'serial',
+      ),
+      'vid' => array(
+        'description' => 'version id for this record',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'surname' => array(
+        'description' => 'Person\'s surname',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => 'UNK',
+      ),
+      'given_name' => array(
+        'description' => 'Person\'s given name',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => 'UNK',
+      ),
+      'middle_name' => array(
+        'description' => 'Person\'s middle name/initial',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'gender' => array(
+        'description' => 'Person\'s gender indicator (0 = MALE, 1 = FEMALE, 2 = UNKNOWN)',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 2,
+      ),
+      'creator' => array(
+        'description' => 'UID of the person who created the original record',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'editor' => array(
+        'description' => 'UID of the person who created the latest version',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'deleted' => array(
+        'description' => 'Deleted flag (0 = no, 1 = yes)',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'published' => array(
+        'description' => 'Published flag (0 = no, 1 = yes)',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'created' => array(
+        'description' => 'unix timestamp when the record was originally created',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'modified' => array(
+        'description' => 'unix timestamp when the record was last edited',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'indexes' => array(
+      'person_surname' => array('surname'),
+      'person_name' => array('surname', 'given_name', 'middle_name'),
+    ),    
+    'foreign keys' => array(
+      'vid' => array(
+        'table' => 'gen_person_revision',
+        'columns' => array('vid' => 'vid'),
+      ),
+      'creator' => array(
+        'table' => 'users',
+        'columns' => array('creator' => 'uid')
+      ),
+      'editor' => array(
+        'table' => 'users',
+        'columns' => array('editor' => 'uid')
+      ),      
+    ),
+    'primary key' => array(
+      'pid',
+    ),
+  );
+  
+  $schema['gen_person_revision'] = array(
+    'description' => 'Revision table for Gen Person',
+    'fields' => array(
+      'pid' => array(
+        'description' => 'unique index for each person',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'vid' => array(
+        'description' => 'version id for this record',
+        'type' => 'serial',
+      ),
+      'surname' => array(
+        'description' => 'Person\'s surname',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => 'UNK',
+      ),
+      'given_name' => array(
+        'description' => 'Person\'s given name',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => 'UNK',
+      ),
+      'middle_name' => array(
+        'description' => 'Person\'s middle name/initial',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+      ),
+      'gender' => array(
+        'description' => 'Person\'s gender indicator (0 = MALE, 1 = FEMALE, 2 = UNKNOWN)',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 2,
+      ),
+      'creator' => array(
+        'description' => 'UID of the person who created the original record',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'editor' => array(
+        'description' => 'UID of the person who created the latest version',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'deleted' => array(
+        'description' => 'Deleted flag (0 = no, 1 = yes)',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'published' => array(
+        'description' => 'Published flag (0 = no, 1 = yes)',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 1,
+      ),
+      'created' => array(
+        'description' => 'unix timestamp when the record was originally created',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+      'modified' => array(
+        'description' => 'unix timestamp when the record was last edited',
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+      ),
+    ),
+    'foreign keys' => array(
+      'pid' => array(
+        'table' => 'gen_person',
+        'columns' => array('pid' => 'pid'),
+      ),
+      'creator' => array(
+        'table' => 'users',
+        'columns' => array('creator' => 'uid'),
+      ),
+      'editor' => array(
+        'table' => 'users',
+        'columns' => array('editor' => 'uid'),
+      ),
+    ),
+    'primary key' => array(
+      'vid',
+    ),
+  );
+
+  return $schema;
 }  
 
 /**
