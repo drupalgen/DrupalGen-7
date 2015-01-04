@@ -9,7 +9,112 @@
  * @{
  */
 
+/**
+ * Implements hook_entity_info().
+ */
+function gen_person_entity_info() {
+  $entitytype = 'person';
+  $label = 'Person';
+  $plural = 'People';
+  $description = 'Entity storing information about people in the family tree';
+  $entity = gen_mdb_get_base_entity_info($entitytype, $label, $description, $plural = NULL);
+  return $entity;
+}
 
+/**
+ * Implements hook_entity_property_info().
+ */
+
+function gen_person_entity_property_info() {
+  $entitytype = 'person';
+  $properties = gen_mdb_get_entity_property_info($entitytype);
+  return $properties;
+}
+
+/**
+ * Implements hook_menu().
+ */
+function gen_person_menu() {
+  $items['lisatest'] = array(
+    'title' => 'Mongo Entity Test',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gen_person_person_form'),
+    'access callback' => TRUE,
+  );
+  $items['lisatest/%person'] = array(
+    'title' => 'Mongo Entity Test Retrieve',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('gen_person_person_form', array(1)),
+    'access callback' => TRUE,
+  );
+  return $items;
+}
+
+function gen_person_person_form($form, &$form_state, $person = NULL) {
+  if(!$person) {
+    $person = gen_mdb_prepare('person', TRUE); // TRUE for new entity
+  } else {
+    if(is_numeric($person)) {
+      $entity = gen_mdb_load('person', $person);
+      $person = $entity;
+      dsm($person);
+      $old_entity = $person;
+    }
+  }
+  field_attach_form('person', $person, $form, $form_state);
+  
+  $form['#entity'] = $person;
+  
+  if(!isset($person->is_new) && !isset($form['#old_entity'])) $form['#old_entity'] = $old_entity;
+  
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Save Person',
+  );
+  
+  return $form;
+}
+
+function gen_person_person_form_validate(&$form, &$form_state) {
+  $entity = $form['#entity'];
+  field_attach_form_validate('person', $entity, $form, $form_state);
+}
+
+function gen_person_person_form_submit(&$form, &$form_state) {
+  $entity = $form['#entity'];
+  
+  if(!isset($entity->is_new)) $preventity = clone $form['#old_entity'];
+  
+  entity_form_submit_build_entity('person', $entity, $form, $form_state);
+  if(!isset($entity->is_new)) {
+    $changeflag = gen_mdb_compare($preventity, $entity);
+  } else {
+    $changeflag = TRUE;
+  }
+  if($changeflag) {
+    $form_state['values']['changed'] = time();
+    entity_form_submit_build_entity('person', $entity, $form, $form_state);
+    $revisionentity = gen_mdb_revision_prepare('person_revision', $entity);
+    entity_save('person_revision', $revisionentity);
+    $entity->vid = $revisionentity->_id;
+    $entity->created = $revisionentity->created;
+    $entity->changed = $revisionentity->changed;
+    $new = isset($entity->is_new) ? $entity->is_new : FALSE;
+    if(isset($entity->_bundle)) {
+      $bundle = $entity->_bundle;
+      unset($entity->_bundle);
+    }
+    entity_save('person', $entity);
+    if($new) {
+      drupal_set_message(t('The %entity was created successfully', array('%entity' => $entity->bundle)));
+    } else {
+      drupal_set_message(t('The %entity was saved successfully', array('%entity' => $bundle)));
+    }
+
+  } else {
+    drupal_set_message(t('There were no changes to save'), 'warning');
+  }
+} 
 
 /**
  * @} End of defgroup gen_person

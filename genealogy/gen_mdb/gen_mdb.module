@@ -1,0 +1,218 @@
+<?php
+/**
+ * @file
+ * Genealogy Mongo Entity module file
+ */
+
+/**
+ * @defgroup gen_mdb Genealogy Mongo Entity
+ * @{
+ */
+
+/**
+ * Returns array for implementation of hook_entity_info() for MongoEntity
+ * genealogy data types.
+ *
+ * @param $entitytype string
+ *   Contains machine name of entity type
+ * @param $label string
+ *   Contains Entity label (singular)
+ * @param $plural mixed
+ *   String containing Entity label (plural), or NULL for no plural label
+ *   (default to NULL)
+ *
+ * @return array
+ *   Contains array of items to make up base entity definition for MongoEntity
+ *   genealogy data types; intended to be fielded for datatype specifics
+ */
+function gen_mdb_get_base_entity_info($entitytype, $label, $description, $plural = NULL) {
+  $entitytypename = $entitytype;
+  $items[$entitytype] = array(
+    'label' => t('!label', array('!label' => $label)),
+    'description' => t('!description', array('!description' => $description)),
+    'entity class' => 'GenealogyMDBEntity',
+    'controller class' => 'MongoEntityController',
+    'fieldable' => TRUE,
+    'bundles' => array(
+      $entitytypename => array(
+        'label' => t('!label', array('!label' => $label)),
+        'admin' => array(
+          'access arguments' => array('administer site configuration'),
+          'path' => t('admin/!entitytype/manage', array('!entitytype' => $entitytype)),
+        ),
+      ),
+    ),
+  );
+  
+  if($plural) {
+    $items[$entitytype]['plural label'] = $plural;
+  }
+
+  $items[$entitytype . '_revision'] = $items[$entitytype];
+  
+  $items[$entitytype . '_revision']['entity class'] = 'GenealogyMDBRevisionEntity';
+  $items[$entitytype . '_revision']['bundles'] = array(
+    $entitytype . '_revision' => array(
+      'label' => t('!label', array('!label' => $label)),
+    ),
+  );
+  
+  return $items;
+}
+
+function gen_mdb_get_entity_property_info($entitytype) {
+  $items[$entitytype]['properties']['author'] = array(
+    'label' => t('Author ID'),
+    'type' => 'integer',
+    'description' => t('User ID of the author or creator'),
+  );
+  $items[$entitytype]['properties']['editor'] = array(
+    'label' => t('Editor ID'),
+    'type' => 'integer',
+    'description' => t('User ID of the latest editor'),
+  );
+  $items[$entitytype]['properties']['created'] = array(
+    'label' => t('Created'),
+    'type' => 'date',
+    'description' => t('Timestamp of the create date'),
+  );
+  $items[$entitytype]['properties']['changed'] = array(
+    'label' => t('Changed'),
+    'type' => 'date',
+    'description' => t('Timestamp of the latest change'),
+  );
+  $items[$entitytype]['properties']['published'] = array(
+    'label' => t('Published'),
+    'type' => 'boolean',
+    'description' => t('Published flag'),
+  );
+  $items[$entitytype]['properties']['promoted'] = array(
+    'label' => t('Promoted'),
+    'type' => 'boolean',
+    'description' => t('Promoted to front page'),
+  );
+  $items[$entitytype]['properties']['sticky'] = array(
+    'label' => t('Stick to top'),
+    'type' => 'boolean',
+    'description' => t('Stick to top flag '),
+  );
+  $items[$entitytype]['properties']['deleted'] = array(
+    'label' => t('Deleted'),
+    'type' => 'boolean',
+    'description' => t('Deleted flag'),
+  );
+  //duplicates the defined properties for the revision data store
+  $items[$entitytype . '_revision'] = $items[$entitytype];
+  
+  //Adds the previous vid storage field to the revision data store
+  $items[$entitytype . '_revision']['properties']['previous_vid'] = array(
+    'label' => t('Previous ID'),
+    'type' => 'integer',
+    'description' => t('Previous Version ID'),
+  );
+
+  //Adds the version id for the current record data store
+  $items[$entitytype]['properties']['vid'] = array(
+    'label' => t('Version ID'),
+    'type' => 'integer',
+    'description' => t('Current Version ID'),
+  );
+
+  return $items;
+}
+
+function gen_mdb_prepare($entitytype, $is_new, $options = array()) {
+  global $user;
+  extract($options);
+  $entity = entity_create($entitytype, array(
+    'bundle' => $entitytype,
+    'author' => $user->uid,
+    'editor' => $user->uid,
+    'created' => time(),
+    'changed' => time(),
+    'published' => isset($published) ? $published : TRUE,
+    'promoted' => isset($promoted) ? $promoted : FALSE,
+    'sticky' => isset($sticky) ? $sticky : FALSE,
+    'deleted' => FALSE,
+  ));
+  if(is_a($entity, 'GenealogyMDBEntity') && $is_new) {
+    $entity->vid = 0;
+  }
+  return $entity;
+}
+
+function gen_mdb_revision_prepare($entitytype, $entity) {
+  $reventity = entity_create($entitytype, array(
+    'bundle' => $entitytype,
+    'author' => $entity->author,
+    'editor' => $entity->editor,
+    'created' => $entity->created,
+    'changed' => time(),
+    'published' => time(),
+    'promoted' => $entity->promoted,
+    'sticky' => $entity->sticky,
+    'deleted' => $entity->deleted,
+  ));
+  if(is_a($reventity, 'GenealogyMDBRevisionEntity')) {
+    $reventity->previous_vid = $entity->vid;
+  }
+  return $reventity;
+}
+
+function gen_mdb_load($entitytype, $entityid) {
+  $entity = entity_load($entitytype, array($entityid));
+  if(is_null($entity[$entityid]->published)) {
+    $entity[$entityid]->published = FALSE;
+  }
+  if(is_null($entity[$entityid]->promoted)) {
+    $entity[$entityid]->promoted = FALSE;
+  }
+  if(is_null($entity[$entityid]->sticky)) {
+    $entity[$entityid]->sticky = FALSE;
+  }
+  if(is_null($entity[$entityid]->deleted)) {
+    $entity[$entityid]->deleted = FALSE;
+  }
+  $entity[$entityid]->_bundle = $entitytype;
+  return $entity[$entityid];
+}
+
+function gen_mdb_compare($prev_entity, $entity) {  
+  foreach($prev_entity as $key => $value) {
+    if($entity->$key != $prev_entity->$key) {
+      return TRUE;
+    }
+  }
+  return FALSE;
+}
+/**
+ * Abstract base class for Genealogy Mongo Entities
+ */
+abstract class GenealogyBaseMDBEntity extends MongoEntity {
+  public $author;
+  public $editor;
+  public $created;
+  public $changed;
+  public $published;
+  public $promoted;
+  public $sticky;
+  public $deleted;  
+}
+
+/**
+ * Class for Genealogy Mongo Entities
+ */
+class GenealogyMDBEntity extends GenealogyBaseMDBEntity {
+  public $vid;
+}
+
+/**
+ * Class for Genealogy Revision Mongo Entities
+ */
+class GenealogyMDBRevisionEntity extends GenealogyBaseMDBEntity {
+  public $previous_vid;
+}
+
+/**
+ * @} End of defgroup gen_mdb
+ */

@@ -1,7 +1,7 @@
 <?php
 /**
  * @file
- * Gen Person Entities classes file
+ * Gen Person Admin UI Entities classes file
  */
 
 /**
@@ -9,7 +9,7 @@
  * @{
  */
 
-
+class GenPersonUIController  extends Entity {}
 
 /**
  * @} End of defgroup gen_person

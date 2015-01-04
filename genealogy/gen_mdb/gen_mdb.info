@@ -1,0 +1,9 @@
+name = Genealogy Mongo entity
+description = "Genealogical Mongo entity"
+core = 7.x
+
+package = Genealogy
+
+dependencies[] = mongo_entity
+dependencies[] = efq_views
+

@@ -4,9 +4,11 @@ core = 7.x
 
 package = Genealogy
 
-dependencies[] = entity
+dependencies[] = gen_mdb
 
-files[] = includes/gen_person.entity.inc
+;files[] = includes/GenPerson.inc
+;files[] = includes/GenPersonController.inc
+;files[] = includes/gen_person.admin.inc
 files[] = tests/gen_person.test
 
 
