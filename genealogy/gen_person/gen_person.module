@@ -92,13 +92,15 @@ function gen_person_person_form_submit(&$form, &$form_state) {
     $changeflag = TRUE;
   }
   if($changeflag) {
-    $form_state['values']['changed'] = time();
-    entity_form_submit_build_entity('person', $entity, $form, $form_state);
+    global $user;
+    $entity->changed = time();
+    $entity->editor = $user->uid;
     $revisionentity = gen_mdb_revision_prepare('person_revision', $entity);
     entity_save('person_revision', $revisionentity);
     $entity->vid = $revisionentity->_id;
     $entity->created = $revisionentity->created;
     $entity->changed = $revisionentity->changed;
+    
     $new = isset($entity->is_new) ? $entity->is_new : FALSE;
     if(isset($entity->_bundle)) {
       $bundle = $entity->_bundle;

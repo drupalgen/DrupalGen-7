@@ -179,8 +179,10 @@ function gen_mdb_load($entitytype, $entityid) {
 
 function gen_mdb_compare($prev_entity, $entity) {  
   foreach($prev_entity as $key => $value) {
-    if($entity->$key != $prev_entity->$key) {
-      return TRUE;
+    if($key != 'editor' || $key != 'changed') {
+      if($entity->$key != $prev_entity->$key) {
+        return TRUE;
+      }
     }
   }
   return FALSE;
