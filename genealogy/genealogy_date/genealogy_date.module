@@ -215,12 +215,7 @@ function genealogy_date_field_presave($entity_type, $entity, $field, $instance, 
         }
         elseif($foundit == 2 ) {
           //Hebrew
-          if (!$tempday) $tempday = 1;
-          $gregoriandate = JDtoGregorian( JewishToJD( $newmonth, $tempday, $newyear ) );
-          $newdate = explode("/", $gregoriandate);
-          $newyear = $newdate[2];
-          $newmonth = $newdate[0];
-          $newday= $newdate[1];
+          _genealogy_date_hebrew_date($newmonth, $newday, $newyear, $tempday);
         }
         else {
           $newmonth = 0;
@@ -239,6 +234,15 @@ function genealogy_date_field_presave($entity_type, $entity, $field, $instance, 
   }
 }
 
+function _genealogy_date_hebrew_date(&$newmonth, &$newday, &$newyear, &$tempday) {
+  //Hebrew
+  if (!$tempday) $tempday = 1;
+  $gregoriandate = JDtoGregorian( JewishToJD( $newmonth, $tempday, $newyear ) );
+  $newdate = explode("/", $gregoriandate);
+  $newyear = $newdate[2];
+  $newmonth = $newdate[0];
+  $newday = $newdate[1];
+}
 function _genealogy_date_date_range($dateparts) {
   // looking for a date range...
   $found = array_search("TO", $dateparts);
