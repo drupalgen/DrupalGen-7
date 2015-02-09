@@ -1,0 +1,110 @@
+<?php
+/**
+ * Module file for Gen Person
+ */
+
+function gen_person_form_alter(&$form, &$form_state, $form_id) {
+    dsm($form_id);
+}
+
+function gen_person_form_person_node_form_alter(&$form, &$form_state, $form_id) {
+    $form['#validate'][0] = 'gen_person_form_person_node_form_validate';
+    $form['#validate'][1] = 'node_form_validate';
+}
+
+function gen_person_form_person_node_form_validate(&$form, &$form_state) {
+    if(is_null($form_state['values']['nid'])) { //node is new
+        $result = db_select('gen_person_idx', 'i')
+            ->fields('i', array('surname', 'given', 'idx', 'id', 'created'))
+            ->condition('surname', $form_state['values']['field_person_surname'][LANGUAGE_NONE][0]['value'], '=')
+            ->condition('given', $form_state['values']['field_person_given_name'][LANGUAGE_NONE][0]['value'], '=')
+            ->orderBy('created', 'DESC')
+            ->range(0,1)
+            ->execute()
+            ->fetchAll();
+        if(empty($result)) {
+            $newIdx = new stdClass;
+            $newIdx->surname = $form_state['values']['field_person_surname'][LANGUAGE_NONE][0]['value'];
+            $newIdx->given = $form_state['values']['field_person_given_name'][LANGUAGE_NONE][0]['value'];
+            $newIdx->idx = 1;
+            $id = db_insert('gen_person_idx')
+                ->fields(array(
+                'surname' => $newIdx->surname,
+                'given' => $newIdx->given,
+                'idx' => $newIdx->idx,
+                'created' => REQUEST_TIME,
+            ))
+            ->execute();
+            $form_state['values']['field_gen_person_idx'][LANGUAGE_NONE][0]['value'] = $id;
+            $form_state['values']['field_gen_person_idx2'][LANGUAGE_NONE][0]['value'] = $newIdx->idx;
+        } else {
+            $newIdx = $result[0];
+            $newIdx->idx++;
+            unset($newIdx->id);
+            $id = db_insert('gen_person_idx')
+                ->fields(array(
+                'surname' => $newIdx->surname,
+                'given' => $newIdx->given,
+                'idx' => $newIdx->idx,
+                'created' => REQUEST_TIME,
+            ))
+            ->execute();
+            $form_state['values']['field_gen_person_idx'][LANGUAGE_NONE][0]['value'] = $id;
+            $form_state['values']['field_gen_person_idx2'][LANGUAGE_NONE][0]['value'] = $newIdx->idx;
+        }
+    } else { // node exists       
+        $idno = (int) $form_state['values']['field_gen_person_idx'][LANGUAGE_NONE][0]['value'];
+        $result = db_select('gen_person_idx', 'i')
+            ->fields('i', array('surname', 'given', 'idx', 'id', 'created'))
+            ->condition('id', $idno, "=")
+            ->execute()
+            ->fetchAll();
+        $idx = clone $result[0];
+        if (!((trim($form_state['values']['field_person_surname'][LANGUAGE_NONE][0]['value']) == trim($idx->surname)) &&
+           (trim($form_state['values']['field_person_given_name'][LANGUAGE_NONE][0]['value']) == trim($idx->given)) &&
+           ((int) $form_state['values']['field_gen_person_idx2'][LANGUAGE_NONE][0]['value'] == $idx->idx))) {
+            $result = db_select('gen_person_idx', 'i')
+                ->fields('i', array('surname', 'given', 'idx', 'id', 'created'))
+                ->condition('surname', $form_state['values']['field_person_surname'][LANGUAGE_NONE][0]['value'], '=')
+                ->condition('given', $form_state['values']['field_person_given_name'][LANGUAGE_NONE][0]['value'], '=')
+                ->orderBy('created', 'DESC')
+                ->range(0,1)
+                ->execute()
+                ->fetchAll();
+            if(empty($result)) {
+                $idx->surname = $form_state['values']['field_person_surname'][LANGUAGE_NONE][0]['value'];
+                $idx->given = $form_state['values']['field_person_given_name'][LANGUAGE_NONE][0]['value'];
+                $idx->idx = 1;
+                unset($idx->id);
+                $id = db_insert('gen_person_idx')
+                    ->fields(array(
+                    'surname' => $idx->surname,
+                    'given' => $idx->given,
+                    'idx' => $idx->idx,
+                    'created' => REQUEST_TIME,
+                ))
+                ->execute();
+                $form_state['values']['field_gen_person_idx2'][LANGUAGE_NONE][0]['value'] = $idx->idx;
+                $form_state['values']['field_gen_person_idx'][LANGUAGE_NONE][0]['value'] = $id;
+            } else {
+                $newIdx = clone $result[0];
+                $newIdx->idx++;
+                $idx->surname = $newIdx->surname;
+                $idx->given = $newIdx->given;
+                $idx->created = REQUEST_TIME;
+                $idx->idx = $newIdx->idx;
+                unset($idx->id);
+                $id = db_insert('gen_person_idx')
+                    ->fields(array(
+                        'surname' => $newIdx->surname,
+                        'given' => $newIdx->given,
+                        'idx' => $newIdx->idx,
+                        'created' => REQUEST_TIME,
+                ))
+                ->execute();
+                $form_state['values']['field_gen_person_idx2'][LANGUAGE_NONE][0]['value'] = $newIdx->idx;
+                $form_state['values']['field_gen_person_idx'][LANGUAGE_NONE][0]['value'] = $id;
+            }
+        }
+    }
+}
